@@ -49,7 +49,7 @@ def get_camera_network(camera_serial: str) -> dict:
         camera_serial (str): Camera serial
 
     Returns:
-        str: Network informations
+        str: Network informations 
     """
     client = MerakiSdkClient(MERAKI_AUTH_TOKEN)
     orgs = client.organizations.get_organizations()
@@ -295,5 +295,5 @@ def message():
 @app.route('/send-t10-message', methods=["POST"])
 def t10_message():
     #send_json_message_to_t10("10.89.130.68", "cisco", "cisco", request.get_json())
-    get_camera_network("test")
+    send_json_message_to_t10("10.89.130.68", "cisco", "cisco", request.get_json())
     return "ok"
