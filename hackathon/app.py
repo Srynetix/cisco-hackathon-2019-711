@@ -211,21 +211,17 @@ def handle_meraki_zone(camera_serial: str, zone_id: str, camera_data: dict):
         zone_id (str): Zone ID
         camera_data (dict): Camera data
     """
+    global CAMERA_STATE
     zone_name = get_zone_name(camera_serial, zone_id)
 
-    # global CAMERA_STATE
-    print(f"[CAM {camera_serial}] [ZONE {zone_name}] [DATA {camera_data}]")
+    state_key = f"{camera_serial}-{zone_id}"
+    previous_persons_count = CAMERA_STATE.get(state_key, 0)
+    current_persons_count = camera_data["counts"]["person"]
 
-    # objects = camera_data["objects"]
-    # persons = [o for o in objects if o["type"] == "person"]
-    # current_persons_count = len(persons)
-    # previous_persons_count = CAMERA_STATE.get(camera_serial, 0)
+    if current_persons_count != previous_persons_count:
+        logger.debug(f"[DEBUG] There are now {current_persons_count} people on zone {zone_name} for camera {camera_serial} (previously {previous_persons_count})")
 
-    # if current_persons_count != previous_persons_count:
-    #     logger.debug(f"[DEBUG] There are now {current_persons_count} people on camera {camera_serial} (previously {previous_persons_count})")
-
-    # Update people count
-    # CAMERA_STATE[camera_serial] = current_persons_count
+    CAMERA_STATE[state_key] = current_persons_count
 
 
 #############
