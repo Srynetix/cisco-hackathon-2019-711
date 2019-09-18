@@ -12,7 +12,7 @@ import xows
 from . import config
 from .api import get_camera_snapshot
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
@@ -22,7 +22,8 @@ mqtt = Mqtt(app)
 
 loop = asyncio.get_event_loop()
 
-MQTT_TOPIC_RGX = re.compile(r"/merakimv/(?P<serial>[0-9A-Z-]+)/raw_detections")
+MQTT_RAW_DETECTIONS_RGX = re.compile(r"/merakimv/(?P<serial>[0-9A-Z-]+)/raw_detections")
+MQTT_ZONE_RGX = re.compile(r"/merakimv/(?P<serial>[0-9A-Z-]+)/(?P<zone_id>[0-9A-Z]+)")
 CAMERA_STATE = {}
 
 ###########
@@ -167,6 +168,20 @@ def handle_t10_message(message: dict):
     raise NotImplementedError()
 
 
+def get_zone_name(camera_serial: str, zone_id: str) -> str:
+    """Get zone name.
+
+    Args:
+        camera_serial (str): Camera serial
+        zone_id (str): Zone ID
+
+    Returns:
+        str: Zone name
+    """
+    camera = next(x for x in config.MERAKI_CAMERAS if x["serial"] == camera_serial)
+    zone = next(x for x in camera.get("zones", []) if x["id"] == zone_id)
+    return zone["name"]
+
 def handle_meraki_data(camera_serial: str, camera_data: dict):
     """Handle Meraki MQTT data.
 
@@ -188,6 +203,31 @@ def handle_meraki_data(camera_serial: str, camera_data: dict):
     CAMERA_STATE[camera_serial] = current_persons_count
 
 
+def handle_meraki_zone(camera_serial: str, zone_id: str, camera_data: dict):
+    """Handle Meraki MQTT data.
+
+    Args:
+        camera_serial (str): Camera serial
+        zone_id (str): Zone ID
+        camera_data (dict): Camera data
+    """
+    zone_name = get_zone_name(camera_serial, zone_id)
+
+    # global CAMERA_STATE
+    print(f"[CAM {camera_serial}] [ZONE {zone_name}] [DATA {camera_data}]")
+
+    # objects = camera_data["objects"]
+    # persons = [o for o in objects if o["type"] == "person"]
+    # current_persons_count = len(persons)
+    # previous_persons_count = CAMERA_STATE.get(camera_serial, 0)
+
+    # if current_persons_count != previous_persons_count:
+    #     logger.debug(f"[DEBUG] There are now {current_persons_count} people on camera {camera_serial} (previously {previous_persons_count})")
+
+    # Update people count
+    # CAMERA_STATE[camera_serial] = current_persons_count
+
+
 #############
 # MQTT routes
 
@@ -201,8 +241,12 @@ def handle_connect(client, userdata, flags, rc):
         flags (Any): Flags
         rc (Any): RC
     """
-    for serial in config.MERAKI_CAMERA_SERIALS:
-        mqtt.subscribe(f'/merakimv/{serial}/raw_detections')
+    for camera in config.MERAKI_CAMERAS:
+        serial = camera["serial"]
+        zones = camera.get("zones", [])
+        for zone in zones:
+            zone_id = zone["id"]
+            mqtt.subscribe(f'/merakimv/{serial}/{zone_id}')
 
 @mqtt.on_message()
 def handle_message(client, userdata, message):
@@ -213,14 +257,18 @@ def handle_message(client, userdata, message):
         userdata (Any): User data
         message (Message): Message object
     """
-    match = MQTT_TOPIC_RGX.search(message.topic)
+    match = MQTT_RAW_DETECTIONS_RGX.search(message.topic)
     if match:
         handle_meraki_data(match.group("serial"), json.loads(message.payload.decode()))
+
+    match = MQTT_ZONE_RGX.search(message.topic)
+    if match:
+        handle_meraki_zone(match.group("serial"), match.group("zone_id"), json.loads(message.payload.decode()))
 
 #############
 # HTTP routes
 
-@app.route('/message', methods=["POST"])
+@app.route('/on-t10-message', methods=["POST"])
 def message():
     """Wait for T10 incoming message.
 
@@ -231,7 +279,7 @@ def message():
     return "ok"
 
 
-@app.route('/t10-message', methods=["POST"])
+@app.route('/send-t10-message', methods=["POST"])
 def t10_message():
     send_json_message_to_t10("10.89.130.68", "cisco", "cisco", request.get_json())
     return "ok"

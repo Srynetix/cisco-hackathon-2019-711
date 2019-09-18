@@ -15,7 +15,21 @@ Create a `local_config.py` file in the `hackathon` folder to override configurat
 
 *Example:*
 ```python
-MERAKI_CAMERA_SERIALS = ["Q2GV-SXBN-ACWY"]
+MERAKI_CAMERAS = [
+    {
+        "serial": "Q2GV-SXBN-ACWY",
+        "zones": [
+            {
+                "id": "634444597505818687",
+                "name": "Too far away"
+            },
+            {
+                "id": "634444597505818688",
+                "name": "Just arrived"
+            }
+        ]
+    }
+]
 ```
 
 Then you can start the procedure:
