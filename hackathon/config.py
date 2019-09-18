@@ -9,6 +9,7 @@ Configuration variables.
 MERAKI_CAMERA_SERIALS = []
 MQTT_BROKER_URL = "mqtt.ciscodemos.co"
 MQTT_BROKER_PORT = 1883
+ROOM_DATA = {}
 
 try:
     from .local_config import *

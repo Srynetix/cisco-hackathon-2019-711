@@ -8,6 +8,7 @@ import requests
 import xows
 
 from . import config
+from .api import get_camera_snapshot
 
 app = Flask(__name__)
 app.config["MQTT_BROKER_URL"] = config.MQTT_BROKER_URL
@@ -48,7 +49,7 @@ def handle_message(client, userdata, message):
         previous_persons_count = CAMERA_STATE.get(camera_serial, 0)
 
         if current_persons_count != previous_persons_count:
-            print(f"There are now {current_persons_count} people on camera {camera_serial}")
+            print(f"[DEBUG] There are now {current_persons_count} people on camera {camera_serial} (previously {previous_persons_count})")
 
         # Update people count
         CAMERA_STATE[camera_serial] = current_persons_count
@@ -64,4 +65,10 @@ def json_test():
 @app.route('/xows-test')
 def xows_test():
     data = loop.run_until_complete(fetch_info())
+    return "ok"
+
+@app.route('/snapshot')
+def snapshot():
+    data = get_camera_snapshot(config.MERAKI_NETWORK_ID, config.MERAKI_CAMERA_SERIALS[0])
+    print(data)
     return "ok"
