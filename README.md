@@ -5,13 +5,17 @@ Requirements:
 - Python 3.7+
 - pip
 
+## Configuration required
+
+- Enable Websocket on the T10
+
 ## Quick start
 
 Create a `local_config.py` file in the `hackathon` folder to override configuration variables:
 
 *Example:*
 ```python
-MERAKI_CAMERA_SERIALS = ["Q2GV-FE9K-QSMA"]
+MERAKI_CAMERA_SERIALS = ["Q2GV-SXBN-ACWY"]
 ```
 
 Then you can start the procedure:
