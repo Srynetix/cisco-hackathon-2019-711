@@ -2,6 +2,7 @@
 Configuration variables.
 
 - MERAKI_CAMERA_SERIALS (List[str]):    Camera serials list
+- MERAKI_AUTH_TOKEN (str):              Meraki authentication token
 - MQTT_BROKER_URL (str):                MQTT broker URL
 - MQTT_BROKER_PORT (int):               MQTT broker port
 """

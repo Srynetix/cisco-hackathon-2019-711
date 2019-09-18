@@ -48,8 +48,8 @@ def handle_message(client, userdata, message):
         current_persons_count = len(persons)
         previous_persons_count = CAMERA_STATE.get(camera_serial, 0)
 
-        if current_persons_count != previous_persons_count:
-            print(f"[DEBUG] There are now {current_persons_count} people on camera {camera_serial} (previously {previous_persons_count})")
+        # if current_persons_count != previous_persons_count:
+        #     print(f"[DEBUG] There are now {current_persons_count} people on camera {camera_serial} (previously {previous_persons_count})")
 
         # Update people count
         CAMERA_STATE[camera_serial] = current_persons_count
@@ -70,5 +70,11 @@ def xows_test():
 @app.route('/snapshot')
 def snapshot():
     data = get_camera_snapshot(config.MERAKI_NETWORK_ID, config.MERAKI_CAMERA_SERIALS[0])
-    print(data)
-    return "ok"
+    if data.status_code != 202:
+        # Fake data
+        return {
+            "url": "https://spn4.meraki.com/stream/jpeg/snapshot/b2d123asdf423qd22d2",
+            "expiry": "Access to the image will expire one day"
+        }
+
+    return data.content
