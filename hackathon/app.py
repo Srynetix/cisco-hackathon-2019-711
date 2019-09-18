@@ -42,22 +42,27 @@ def get_camera_room(camera_serial: str) -> Optional[dict]:
     # TODO
     raise NotImplementedError()
 
-def get_all_devices() -> list:
+def get_all_devices(organization_id=None, network_id=None) -> list:
     """Get all devices.
 
     Returns:
         Optional[dict]: Devices list
     """    
 
+    passFilter = False if organization_id is not None else True
     avai_devices = []
     client = MerakiSdkClient(config.MERAKI_AUTH_TOKEN)
-    orgs = client.organizations.get_organizations()  
-    avai_orga =  [{'organization_id': orgs[x]} for x in orgs]
+    orgs = client.organizations.get_organizations()
+    avai_orga =  [{'organization_id': orgs[x]} for x in orgs if (not passFilter and orgs[x] == organization_id) or passFilter]
     networks = client.networks.get_organization_networks(avai_orga)
     if networks:  
         for network in networks:
-            avai_devices.append( client.devices.get_network_devices(network['id']))
-
+            if network_id:
+                if network['id'] == network_id:
+                    avai_devices.append( client.devices.get_network_devices(network['id']))
+            else:
+                avai_devices.append( client.devices.get_network_devices(network['id']))
+    
     return avai_devices
 
 def get_camera_network(camera_serial: str) -> dict:
