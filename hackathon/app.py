@@ -50,9 +50,9 @@ def get_camera_network(camera_serial: str) -> dict:
         camera_serial (str): Camera serial
 
     Returns:
-        str: Network informations 
+        str: Network informations
     """
-    client = MerakiSdkClient(MERAKI_AUTH_TOKEN)
+    client = MerakiSdkClient(config.MERAKI_AUTH_TOKEN)
     orgs = client.organizations.get_organizations()
 
     all_organizations = {}
@@ -62,7 +62,7 @@ def get_camera_network(camera_serial: str) -> dict:
 
     if all_organizations:  # make sure it's not an empty collection
         networks = client.networks.get_organization_networks(all_organizations)
-        if networks:  
+        if networks:
             for network in networks:
                 devices = client.devices.get_network_devices(network['id'])
                 for device in devices:
