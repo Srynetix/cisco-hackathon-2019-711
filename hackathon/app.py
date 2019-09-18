@@ -24,9 +24,7 @@ CAMERA_STATE = {}
 
 async def fetch_info():
     async with xows.XoWSClient('10.89.130.68', 'cisco', 'cisco') as client:
-        data = await client.xCommand(['Message', 'Send'], Text='Hello from Python')
-        print(data)
-        # await client.wait_until_closed()
+        data = await client.xCommand(['Message', 'Send'], Text="Speak:Hello")
 
 #############
 # MQTT routes
@@ -49,8 +47,8 @@ def handle_message(client, userdata, message):
         current_persons_count = len(persons)
         previous_persons_count = CAMERA_STATE.get(camera_serial, 0)
 
-        # if current_persons_count != previous_persons_count:
-            # print(f"There are now {current_persons_count} people on camera {camera_serial}")
+        if current_persons_count != previous_persons_count:
+            print(f"There are now {current_persons_count} people on camera {camera_serial}")
 
         # Update people count
         CAMERA_STATE[camera_serial] = current_persons_count
