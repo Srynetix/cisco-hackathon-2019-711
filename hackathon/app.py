@@ -89,9 +89,7 @@ def get_room_meeting(room_id: str) -> Optional[dict]:
     Returns:
         Optional[dict]: Meeting information
     """
-    # TODO
-    raise NotImplementedError()
-
+    return api.get_current_meeting_api(room_id)
 
 
 def get_available_room(meeting_length: int) -> Optional[dict]:

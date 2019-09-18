@@ -24,10 +24,13 @@ def identify_person_api(person):
     url= f"{config.DATA_API_BASE_URL}/{person}/identify"
     return requests.get(url)
 
-def get_room_device_info_api(room_title):
-    url = f"{config.DATA_API_BASE_URL}/room/{room_title}/device"
-    return requests.post(url)
+def get_room_device_info_api(room):
+    url = f"{config.DATA_API_BASE_URL}/room/{room}/device"
+    return requests.get(url)
 
+def get_current_meeting_api(room):
+    url = f"{config.DATA_API_BASE_URL}/room/{room}/now"
+    return requests.get(url)
 
 """
 def get_camera_snapshot_sdk(network, serial):
