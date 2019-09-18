@@ -20,7 +20,7 @@ CAMERA_STATE = {}
 
 @mqtt.on_connect()
 def handle_connect(client, userdata, flags, rc):
-    for serial in config.CAMERA_SERIALS:
+    for serial in config.MERAKI_CAMERA_SERIALS:
         mqtt.subscribe(f'/merakimv/{serial}/raw_detections')
 
 @mqtt.on_message()
@@ -37,7 +37,7 @@ def handle_message(client, userdata, message):
         previous_persons_count = CAMERA_STATE.get(camera_serial, 0)
 
         if current_persons_count != previous_persons_count:
-            print("There are now {current_persons_count} on camera {camera_serial}")
+            print(f"There are now {current_persons_count} people on camera {camera_serial}")
 
         # Update people count
         CAMERA_STATE[camera_serial] = current_persons_count
