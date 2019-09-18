@@ -216,6 +216,25 @@ def send_raw_message_to_t10(ip: str, username: str, password: str, message: str)
     """
     return loop.run_until_complete(async_send_raw_message_to_t10(ip, username, password, message))
 
+def get_person_meeting_from_camera(camera_serial):
+    # Get the network
+    network_data = get_camera_network(camera_serial)
+    # Get the camera capture
+    capture_data = take_picture_from_camera(network_data["id"], camera_serial)
+    # Identify person
+    person_data = identify_user(capture_data["url"])
+    # Get the room ID associated to the camera
+    room_data = get_camera_room(camera_serial)
+    # Get the T10 device associated to the room
+    t10_data = get_room_t10(room_data["room"])
+    # Get the meeting
+    meeting = get_room_meeting(room_data["room"])
+
+    if meeting:
+        return {
+            't10_data': t10_data,
+            'username': person_data["identified_person"]
+        }    
 
 def send_json_message_to_t10(ip: str, username: str, password: str, message: dict) -> dict:
     """Send JSON message to T10.
@@ -310,30 +329,19 @@ def start_entered_scenario(camera_serial: str):
 
     if ENTER_EVENT_TRIGGERED:
         return
-
     # Set the trigger
     ENTER_EVENT_TRIGGERED = True
-    # Get the network
-    network_data = get_camera_network(camera_serial)
-    # Get the camera capture
-    capture_data = take_picture_from_camera(network_data["id"], camera_serial)
-    # Identify person
-    person_data = identify_user(capture_data["url"])
-    # Get the room ID associated to the camera
-    room_data = get_camera_room(camera_serial)
-    # Get the T10 device associated to the room
-    t10_data = get_room_t10(room_data["room"])
-    # Get the meeting
-    meeting = get_room_meeting(room_data["room"])
+    
+    related_meeting_data = get_person_meeting_from_camera(camera_serial)
 
-    if meeting:
+    if related_meeting_data:
         send_json_message_to_t10(
-            t10_data["credentials"]["IP"],
-            t10_data["credentials"]["username"],
-            t10_data["credentials"]["password"],
+            related_meeting_data['t10_data']["credentials"]["IP"],
+            related_meeting_data['t10_data']["credentials"]["username"],
+            related_meeting_data['t10_data']["credentials"]["password"],
             {
                 "messageId": 1,
-                "username": person_data["identified_person"]
+                'username': related_meeting_data['username']
             }
         )
 
@@ -350,20 +358,10 @@ def start_too_far_scenario(camera_serial: str):
         return
 
     WARN_EVENT_TRIGGERING = True
-    # Get the network
-    network_data = get_camera_network(camera_serial)
-    # Get the camera capture
-    capture_data = take_picture_from_camera(network_data["id"], camera_serial)
-    # Identify person
-    person_data = identify_user(capture_data["url"])
-    # Get the room ID associated to the camera
-    room_data = get_camera_room(camera_serial)
-    # Get the T10 device associated to the room
-    t10_data = get_room_t10(room_data["room"])
-    # Get the meeting
-    meeting = get_room_meeting(room_data["room"])
 
-    username = person_data["identified_person"]
+    related_meeting_data = get_person_meeting_from_camera(camera_serial)
+
+    username = related_meeting_data['username']
 
     # Already triggered
     if username in WARN_STATE:
@@ -372,11 +370,11 @@ def start_too_far_scenario(camera_serial: str):
     # Mark the username as warned
     WARN_STATE[username] = True
 
-    if meeting:
+    if related_meeting_data:
         send_json_message_to_t10(
-            t10_data["credentials"]["IP"],
-            t10_data["credentials"]["username"],
-            t10_data["credentials"]["password"],
+            related_meeting_data['t10_data']["credentials"]["IP"],
+            related_meeting_data['t10_data']["credentials"]["username"],
+            related_meeting_data['t10_data']["credentials"]["password"],
             {
                 "messageId": 3,
                 "username": username,
