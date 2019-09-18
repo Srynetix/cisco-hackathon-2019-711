@@ -29,6 +29,9 @@ virtualenv -p python3 ./venv
 # - For UNIX-like
 . ./venv/bin/activate
 
-# 4. Start the server
+# 4. Install dependencies
+pip install -r requirements.txt
+
+# 5. Start the server
 python start.py
 ```
