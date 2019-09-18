@@ -10,7 +10,7 @@ import requests
 import xows
 
 from . import config
-from .api import get_camera_snapshot
+from .api import *
 from meraki_sdk.meraki_sdk_client import MerakiSdkClient
 
 logging.basicConfig(level=logging.DEBUG)
@@ -93,6 +93,24 @@ def get_room_meeting(room_id: str) -> Optional[dict]:
     raise NotImplementedError()
 
 
+
+def get_available_room(meeting_length: int) -> Optional[dict]:
+    """Get meeting associated to room.
+
+    Args:
+        room_id (str): Room ID
+
+    Returns:
+        Optional[dict]: Meeting information
+    """
+    try:
+        return get_available_room_api(meeting_length)
+    except Exception as err:
+        logger.log(str(err))
+    
+    raise NotImplementedError()
+
+
 def get_room_t10(room_id: str) -> Optional[dict]:
     """Get T10 associated to room.
 
@@ -102,6 +120,7 @@ def get_room_t10(room_id: str) -> Optional[dict]:
     Returns:
         Optional[dict]: T10 information
     """
+    return get_room_device_info_api(room_id) 
 
 
 def take_picture_from_camera(network_id: str, camera_serial: str) -> dict:
@@ -134,9 +153,7 @@ def identify_user(picture: str) -> Optional[dict]:
     Returns:
         Optional[dict]: User information
     """
-    # TODO
-    raise NotImplementedError()
-
+    return identify_person_api(picture)
 
 
 async def async_send_raw_message_to_t10(ip: str, username: str, password: str, message: str) -> dict:
