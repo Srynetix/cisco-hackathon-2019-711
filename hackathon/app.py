@@ -199,20 +199,23 @@ def handle_t10_message(message: dict):
         message (dict): Message
     """
     # TODO
-    
+    print(message)
+
     try:
         #TODO: Add conditions once protocol is done
         #TODO:REMOVE HARD CODED IP
-        async_send_raw_message_to_t10("10.89.130.68",
-                                      config.USERNAME,
-                                      config.PASSWORD,
-                                      TEN_10_RECEIVE_PROTOCOL[message['id']])
-    
+        # async_send_raw_message_to_t10("10.89.130.68",
+        #                               config.USERNAME,
+        #                               config.PASSWORD,
+        #                               TEN_10_RECEIVE_PROTOCOL[message['id']])
+
+        if message["choice"] == "yes":
+            send_json_message_to_t10("10.89.130.68", "cisco", "cisco", {
+                "messageId": 2
+            })
 
     except Exception as err:
         logger.debug(str(err))
-    
-    raise NotImplementedError()
 
 
 def get_zone_name(camera_serial: str, zone_id: str) -> str:
@@ -265,10 +268,22 @@ def handle_meraki_zone(camera_serial: str, zone_id: str, camera_data: dict):
     previous_persons_count = CAMERA_STATE.get(state_key, 0)
     current_persons_count = camera_data["counts"]["person"]
 
-    if current_persons_count != previous_persons_count:
-        logger.debug(f"[DEBUG] There are now {current_persons_count} people on zone {zone_name} for camera {camera_serial} (previously {previous_persons_count})")
+    if zone_name == "Start" and current_persons_count > previous_persons_count:
+        logger.debug(f"[DEBUG] Someone entered the room (camera: {camera_serial})")
+
+    if zone_name == "Far" and current_persons_count > previous_persons_count:
+        logger.debug(f"[DEBUG] Someone is too far in the room (camera: {camera_serial})")
 
     CAMERA_STATE[state_key] = current_persons_count
+
+
+def handle_bot_message(message: dict):
+    """Handle bot message.
+
+    Args:
+        message (dict): Message
+    """
+    pass
 
 
 #############
@@ -326,4 +341,15 @@ def message():
 def t10_message():
     #send_json_message_to_t10("10.89.130.68", "cisco", "cisco", request.get_json())
     send_json_message_to_t10("10.89.130.68", "cisco", "cisco", request.get_json())
+    return "ok"
+
+
+@app.route('/on-bot-message', methods=["POST"])
+def bot_message():
+    """Wait for bot incoming message.
+
+    Returns:
+        str: Route output
+    """
+    handle_bot_message(request.get_json())
     return "ok"

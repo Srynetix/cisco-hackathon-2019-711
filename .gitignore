@@ -2,3 +2,4 @@
 /venv
 hackathon/local_config.py
 __pycache__
+*.pyc
