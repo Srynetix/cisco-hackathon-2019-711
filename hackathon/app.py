@@ -49,9 +49,9 @@ def get_camera_network(camera_serial: str) -> dict:
         camera_serial (str): Camera serial
 
     Returns:
-        str: Network ID
+        str: Network informations
     """
-    client = MerakiSdkClient("e5181a74e1b1941ca3c5b3752116f1c8a1e9a750")
+    client = MerakiSdkClient(MERAKI_AUTH_TOKEN)
     orgs = client.organizations.get_organizations()
 
     all_organizations = {}
