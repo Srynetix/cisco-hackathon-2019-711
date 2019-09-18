@@ -249,13 +249,14 @@ def send_json_message_to_t10(ip: str, username: str, password: str, message: dic
     return loop.run_until_complete(async_send_raw_message_to_t10(ip, username, password, json_data))
 
 
-def send_json_message_to_bot(message: str):
+def send_json_message_to_bot(message: dict):
     """Send JSON message to bot.
 
     Args:
         message (str): Message
     """
-    requests.get(config.BOT_URL, data={"message": message})
+    requests.post(config.BOT_URL, json.dumps(message))
+
 
 def schedule_o365_meeting(meeting_information: dict):
     """Schedule O365 MEETING
@@ -463,9 +464,9 @@ def test_too_far_scenario():
     return "ok"
 
 
-@app.route('/test-bot-message', methods=["GET"])
+@app.route('/test-bot-message', methods=["POST"])
 def test_bot_message():
-    send_json_message_to_bot(request.data)
+    send_json_message_to_bot(request.get_json())
     return "ok"
 
 
@@ -476,5 +477,5 @@ def on_bot_message():
     Returns:
         str: Route output
     """
-    handle_bot_message(request.data)
+    handle_bot_message(request.get_json())
     return "ok"
