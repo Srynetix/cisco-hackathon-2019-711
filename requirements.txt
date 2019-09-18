@@ -2,3 +2,4 @@ flask
 flask-mqtt
 requests
 git+https://github.com/cisco-ce/pyxows#1.0.2
+meraki-sdk==1.0.2

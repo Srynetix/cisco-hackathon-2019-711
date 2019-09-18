@@ -11,6 +11,7 @@ import xows
 
 from . import config
 from .api import get_camera_snapshot
+from meraki_sdk.meraki_sdk_client import MerakiSdkClient
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -182,6 +183,7 @@ def handle_t10_message(message: dict):
         message (dict): Message
     """
     # TODO
+
     raise NotImplementedError()
 
 
