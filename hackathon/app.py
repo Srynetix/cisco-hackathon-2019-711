@@ -30,16 +30,17 @@ def handle_message(client, userdata, message):
     match = MQTT_TOPIC_RGX.search(message.topic)
     if match:
         camera_serial = match.group("serial")
-        print(f"> Camera: {camera_serial}")
-
         camera_data = json.loads(message.payload.decode())
         objects = camera_data["objects"]
         persons = [o for o in objects if o["type"] == "person"]
-        if len(persons) > 0:
-            print("PERSONS DETECTED, CALLING BLABLABLA")
+        current_persons_count = len(persons)
+        previous_persons_count = CAMERA_STATE.get(camera_serial, 0)
+
+        if current_persons_count != previous_persons_count:
+            print("There are now {current_persons_count} on camera {camera_serial}")
 
         # Update people count
-        CAMERA_STATE[camera_serial] = len(persons)
+        CAMERA_STATE[camera_serial] = current_persons_count
 
 #############
 # HTTP routes
