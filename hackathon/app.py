@@ -136,7 +136,6 @@ def get_available_room(meeting_length: int) -> Optional[dict]:
     except Exception as err:
         logger.log(str(err))
 
-    raise NotImplementedError()
 
 
 def get_room_t10(room_id: str) -> Optional[dict]:
