@@ -272,7 +272,7 @@ def handle_meraki_zone(camera_serial: str, zone_id: str, camera_data: dict):
 
     if zone_name == "Start" and current_persons_count > previous_persons_count:
         logger.debug(f"[DEBUG] Someone entered the room (camera: {camera_serial})")
-        start_entered_scenario(camera_serial)
+        # start_entered_scenario(camera_serial)
 
     if zone_name == "Far" and current_persons_count > previous_persons_count:
         logger.debug(f"[DEBUG] Someone is too far in the room (camera: {camera_serial})")
@@ -374,6 +374,11 @@ def on_t10_message():
 def send_t10_message():
     send_json_message_to_t10("10.89.130.68", "cisco", "cisco", request.get_json())
     return "ok"
+
+
+@app.route('/test-2nd-scenario', methods=["GET"])
+def test_2nd_scenario():
+    start_entered_scenario(config.MERAKI_CAMERAS[0]["serial"])
 
 
 @app.route('/on-bot-message', methods=["POST"])
