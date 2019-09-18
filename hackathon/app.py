@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import re
 
 from flask import Flask, request
@@ -9,6 +10,9 @@ import xows
 
 from . import config
 from .api import get_camera_snapshot
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config["MQTT_BROKER_URL"] = config.MQTT_BROKER_URL
@@ -48,8 +52,8 @@ def handle_message(client, userdata, message):
         current_persons_count = len(persons)
         previous_persons_count = CAMERA_STATE.get(camera_serial, 0)
 
-        # if current_persons_count != previous_persons_count:
-        #     print(f"[DEBUG] There are now {current_persons_count} people on camera {camera_serial} (previously {previous_persons_count})")
+        if current_persons_count != previous_persons_count:
+            logger.debug(f"[DEBUG] There are now {current_persons_count} people on camera {camera_serial} (previously {previous_persons_count})")
 
         # Update people count
         CAMERA_STATE[camera_serial] = current_persons_count
