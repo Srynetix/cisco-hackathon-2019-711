@@ -14,7 +14,7 @@ def get_camera_snapshot(network, serial):
 
 """
 def get_camera_snapshot_sdk(network, serial):
-    #Using SDK 
+    #Using SDK
     try:
         client = MerakiSdkClient(config.MERAKI_AUTH_TOKEN)
         return client.cameras.generate_network_camera_snapshot({'network_id':network,
