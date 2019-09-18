@@ -13,7 +13,7 @@ MERAKI_ORGANIZATION_ID = None
 MQTT_BROKER_URL = "mqtt.ciscodemos.co"
 MQTT_BROKER_PORT = 1883
 ROOM_DATA = {}
-
+DATA_API_BASE_URL = ""
 try:
     from .local_config import *
 except ImportError:
