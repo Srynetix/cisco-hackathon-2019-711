@@ -42,7 +42,7 @@ def get_camera_room(camera_serial: str) -> Optional[dict]:
     raise NotImplementedError()
 
 
-def get_camera_network(camera_serial: str) -> str:
+def get_camera_network(camera_serial: str) -> dict:
     """Get network associated to camera.
 
     Args:
@@ -51,8 +51,24 @@ def get_camera_network(camera_serial: str) -> str:
     Returns:
         str: Network ID
     """
-    # TODO
-    raise NotImplementedError()
+    client = MerakiSdkClient("e5181a74e1b1941ca3c5b3752116f1c8a1e9a750")
+    orgs = client.organizations.get_organizations()
+
+    all_organizations = {}
+
+    for org in orgs:
+        all_organizations['organization_id'] = org['id']
+
+    if all_organizations:  # make sure it's not an empty collection
+        networks = client.networks.get_organization_networks(all_organizations)
+        if networks:  
+            for network in networks:
+                devices = client.devices.get_network_devices(network['id'])
+                for device in devices:
+                    if device['serial'] == camera_serial:
+                        return network
+
+    return {}
 
 
 def get_room_meeting(room_id: str) -> Optional[dict]:
@@ -281,5 +297,6 @@ def message():
 
 @app.route('/send-t10-message', methods=["POST"])
 def t10_message():
-    send_json_message_to_t10("10.89.130.68", "cisco", "cisco", request.get_json())
+    #send_json_message_to_t10("10.89.130.68", "cisco", "cisco", request.get_json())
+    get_camera_network("test")
     return "ok"
