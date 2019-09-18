@@ -9,8 +9,7 @@ from flask_mqtt import Mqtt
 import requests
 import xows
 
-from . import config, api
-
+from . import api, config
 from meraki_sdk.meraki_sdk_client import MerakiSdkClient
 
 logging.basicConfig(level=logging.DEBUG)
@@ -27,13 +26,6 @@ MQTT_RAW_DETECTIONS_RGX = re.compile(r"/merakimv/(?P<serial>[0-9A-Z-]+)/raw_dete
 MQTT_ZONE_RGX = re.compile(r"/merakimv/(?P<serial>[0-9A-Z-]+)/(?P<zone_id>[0-9A-Z]+)")
 CAMERA_STATE = {}
 
-
-#REPLACE THIS BY RELATED
-TEN_10_RECEIVE_PROTOCOL = {
-    0 : "Meeting scheduling is done",
-    1 : "",
-    2 : ""
-}
 
 ###########
 # Utilities
@@ -105,7 +97,7 @@ def get_available_room(meeting_length: int) -> Optional[dict]:
         return api.get_available_room_api(meeting_length)
     except Exception as err:
         logger.log(str(err))
-    
+
     raise NotImplementedError()
 
 
@@ -118,7 +110,7 @@ def get_room_t10(room_id: str) -> Optional[dict]:
     Returns:
         Optional[dict]: T10 information
     """
-    return api.get_room_device_info_api(room_id) 
+    return api.get_room_device_info_api(room_id)
 
 
 def take_picture_from_camera(network_id: str, camera_serial: str) -> dict:
@@ -217,13 +209,6 @@ def handle_t10_message(message: dict):
     print(message)
 
     try:
-        #TODO: Add conditions once protocol is done
-        #TODO:REMOVE HARD CODED IP
-        # async_send_raw_message_to_t10("10.89.130.68",
-        #                               config.USERNAME,
-        #                               config.PASSWORD,
-        #                               TEN_10_RECEIVE_PROTOCOL[message['id']])
-
         if message["choice"] == "yes":
             send_json_message_to_t10("10.89.130.68", "cisco", "cisco", {
                 "messageId": 2
@@ -285,11 +270,42 @@ def handle_meraki_zone(camera_serial: str, zone_id: str, camera_data: dict):
 
     if zone_name == "Start" and current_persons_count > previous_persons_count:
         logger.debug(f"[DEBUG] Someone entered the room (camera: {camera_serial})")
+        start_entered_scenario(camera_serial)
 
     if zone_name == "Far" and current_persons_count > previous_persons_count:
         logger.debug(f"[DEBUG] Someone is too far in the room (camera: {camera_serial})")
 
     CAMERA_STATE[state_key] = current_persons_count
+
+
+def start_entered_scenario(camera_serial: str):
+    # Get the network
+    network = get_camera_network(camera_serial)
+    # Get the camera capture
+    capture = take_picture_from_camera(network["id"], camera_serial)
+    # Identify person
+    person = identify_user(capture["url"])
+    # Get the room ID associated to the camera
+    room_id = get_camera_room(camera_serial)
+    # Get the T10 device associated to the room
+    t10_info = api.get_room_t10(room_id)
+    # Get the associated meeting (TODO: No hardcode)
+    meeting = {
+        "start_time": "0",
+        "attendees": ["a@local.test", "b@local.test"],
+        "subject": "Hello"
+    }
+
+    if meeting:
+        send_json_message_to_t10(
+            t10_info["credentials"]["IP"],
+            t10_info["credentials"]["username"],
+            t10_info["credentials"]["password"],
+            {
+                "messageId": 1,
+                "username": person["username"]
+            }
+        )
 
 
 def handle_bot_message(message: dict):
@@ -342,7 +358,7 @@ def handle_message(client, userdata, message):
 # HTTP routes
 
 @app.route('/on-t10-message', methods=["POST"])
-def message():
+def on_t10_message():
     """Wait for T10 incoming message.
 
     Returns:
@@ -353,14 +369,13 @@ def message():
 
 
 @app.route('/send-t10-message', methods=["POST"])
-def t10_message():
-    #send_json_message_to_t10("10.89.130.68", "cisco", "cisco", request.get_json())
+def send_t10_message():
     send_json_message_to_t10("10.89.130.68", "cisco", "cisco", request.get_json())
     return "ok"
 
 
 @app.route('/on-bot-message', methods=["POST"])
-def bot_message():
+def on_bot_message():
     """Wait for bot incoming message.
 
     Returns:
