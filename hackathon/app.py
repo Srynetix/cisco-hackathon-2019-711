@@ -126,8 +126,9 @@ async def async_send_raw_message_to_t10(ip: str, username: str, password: str, m
         dict: Response
     """
     async with xows.XoWSClient(ip, username, password) as client:
-        logger.info(f"Sending message {message} to T10 {ip} ...")
-        return await client.xCommand(['Message', 'Send'], Text=message)
+        encoded_message = f"711:{message}"
+        logger.info(f"Sending message {encoded_message} to T10 {ip} ...")
+        return await client.xCommand(['Message', 'Send'], Text=encoded_message)
 
 
 def send_raw_message_to_t10(ip: str, username: str, password: str, message: str) -> dict:
@@ -155,7 +156,7 @@ def send_json_message_to_t10(ip: str, username: str, password: str, message: dic
         dict: Response
     """
     json_data = json.dumps(message)
-    return loop.run_until_complete(async_send_raw_message_to_t10(ip, username, password, f"JSON:{json_data}"))
+    return loop.run_until_complete(async_send_raw_message_to_t10(ip, username, password, json_data))
 
 
 def handle_t10_message(message: dict):
