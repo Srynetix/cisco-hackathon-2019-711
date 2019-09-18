@@ -27,6 +27,14 @@ MQTT_RAW_DETECTIONS_RGX = re.compile(r"/merakimv/(?P<serial>[0-9A-Z-]+)/raw_dete
 MQTT_ZONE_RGX = re.compile(r"/merakimv/(?P<serial>[0-9A-Z-]+)/(?P<zone_id>[0-9A-Z]+)")
 CAMERA_STATE = {}
 
+
+#REPLACE THIS BY RELATED
+TEN_10_RECEIVE_PROTOCOL = {
+    0 : "Meeting scheduling is done",
+    1 : "",
+    2 : ""
+}
+
 ###########
 # Utilities
 
@@ -52,7 +60,7 @@ def get_camera_network(camera_serial: str) -> dict:
     Returns:
         str: Network informations 
     """
-    client = MerakiSdkClient(MERAKI_AUTH_TOKEN)
+    client = MerakiSdkClient(config.MERAKI_AUTH_TOKEN)
     orgs = client.organizations.get_organizations()
 
     all_organizations = {}
@@ -130,6 +138,7 @@ def identify_user(picture: str) -> Optional[dict]:
     raise NotImplementedError()
 
 
+
 async def async_send_raw_message_to_t10(ip: str, username: str, password: str, message: str) -> dict:
     """Send raw message to T10.
 
@@ -175,6 +184,13 @@ def send_json_message_to_t10(ip: str, username: str, password: str, message: dic
     json_data = json.dumps(message)
     return loop.run_until_complete(async_send_raw_message_to_t10(ip, username, password, json_data))
 
+def schedule_o365_meeting(meeting_information: dict):
+    """Schedule O365 MEETING
+
+    Args:
+        message (dict): meeting_information
+    """
+    raise NotImplementedError()
 
 def handle_t10_message(message: dict):
     """Handle T10 message.
@@ -183,7 +199,19 @@ def handle_t10_message(message: dict):
         message (dict): Message
     """
     # TODO
+    
+    try:
+        #TODO: Add conditions once protocol is done
+        #TODO:REMOVE HARD CODED IP
+        async_send_raw_message_to_t10("10.89.130.68",
+                                      config.USERNAME,
+                                      config.PASSWORD,
+                                      TEN_10_RECEIVE_PROTOCOL[message['id']])
+    
 
+    except Exception as err:
+        logger.debug(str(err))
+    
     raise NotImplementedError()
 
 
