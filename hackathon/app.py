@@ -14,7 +14,7 @@ from . import api, config
 from meraki_sdk.meraki_sdk_client import MerakiSdkClient
 
 # Logging configuration
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Flask app generation
@@ -351,11 +351,11 @@ def handle_meraki_zone(camera_serial: str, zone_id: str, camera_data: dict):
     current_persons_count = camera_data["counts"]["person"]
 
     if zone_name == "Far" and current_persons_count > 0:
-        logger.debug(f"[DEBUG] Someone is too far in the room (camera: {camera_serial})")
+        # logger.debug(f"[DEBUG] Someone is too far in the room (camera: {camera_serial})")
         start_too_far_scenario(camera_serial)
 
     elif zone_name == "Start" and current_persons_count > previous_persons_count:
-        logger.debug(f"[DEBUG] Someone entered the room (camera: {camera_serial})")
+        # logger.debug(f"[DEBUG] Someone entered the room (camera: {camera_serial})")
         start_entered_scenario(camera_serial)
 
     CAMERA_STATE[state_key] = current_persons_count
