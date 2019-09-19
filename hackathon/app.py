@@ -187,7 +187,7 @@ def take_picture_from_camera(network_id: str, camera_serial: str) -> dict:
     """
     data = api.get_camera_snapshot(network_id, camera_serial)
     if data.status_code != 202:
-        # Fake data
+        # Mock data
         return {
             "url": "https://spn4.meraki.com/stream/jpeg/snapshot/b2d123asdf423qd22d2",
             "expiry": "Access to the image will expire one day"
