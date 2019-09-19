@@ -321,6 +321,7 @@ def handle_meraki_zone(camera_serial: str, zone_id: str, camera_data: dict):
 
     if zone_name == "Far" and current_persons_count > previous_persons_count:
         logger.debug(f"[DEBUG] Someone is too far in the room (camera: {camera_serial})")
+        # start_too_far_scenario(camera_serial)
 
     CAMERA_STATE[state_key] = current_persons_count
 
@@ -387,14 +388,28 @@ def start_too_far_scenario(camera_serial: str):
     LAST_WARN_EVENT = time.time()
     WARN_EVENT_TRIGGERING = False
 
-def handle_bot_message(message: str):
+
+def handle_bot_message(message: dict):
     """Handle bot message.
 
     Args:
         message (dict): Message
     """
-    print(message)
-    pass
+    message_id = message.get("messageId", 0)
+    room_id = message.get("roomId", None)
+    if message_id == 2:
+        # Send a late choice to the T10
+        t10_data = get_room_t10(room_id)
+        send_json_message_to_t10(
+            t10_data["credentials"]["IP"],
+            t10_data["credentials"]["username"],
+            t10_data["credentials"]["password"],
+            {
+                "messageId": message_id,
+                "username": message.get("Name", None),
+                "responseChoice": int(message.get("time", "0"))
+            }
+        )
 
 
 #############
