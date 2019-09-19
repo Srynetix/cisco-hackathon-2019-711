@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import re
+import time
 from typing import Any, Optional
 
 from flask import Flask, request
@@ -22,10 +23,15 @@ mqtt = Mqtt(app)
 
 loop = asyncio.get_event_loop()
 
-MQTT_RAW_DETECTIONS_RGX = re.compile(r"/merakimv/(?P<serial>[0-9A-Z-]+)/raw_detections")
 MQTT_ZONE_RGX = re.compile(r"/merakimv/(?P<serial>[0-9A-Z-]+)/(?P<zone_id>[0-9A-Z]+)")
 CAMERA_STATE = {}
+WARN_STATE = {}
+ENTER_EVENT_TRIGGERED = False
+LAST_WARN_EVENT = 0
+WARN_EVENT_TRIGGERING = False
+WARN_EVENT_THRESHOLD = 7
 
+SECOND_USERNAME = "John Doe"
 
 ###########
 # Utilities
@@ -39,8 +45,8 @@ def get_camera_room(camera_serial: str) -> Optional[dict]:
     Returns:
         Optional[dict]: Room information
     """
-    # TODO
-    raise NotImplementedError()
+    response = api.get_camera_room_api(camera_serial)
+    return response.json()
 
 
 def get_camera_network(camera_serial: str) -> dict:
@@ -53,23 +59,32 @@ def get_camera_network(camera_serial: str) -> dict:
         str: Network informations
     """
     client = MerakiSdkClient(config.MERAKI_AUTH_TOKEN)
-    orgs = client.organizations.get_organizations()
+    try:
+        orgs = client.organizations.get_organizations()
+        all_organizations = {}
 
-    all_organizations = {}
+        for org in orgs:
+            all_organizations['organization_id'] = org['id']
 
-    for org in orgs:
-        all_organizations['organization_id'] = org['id']
+        if all_organizations:  # make sure it's not an empty collection
+            networks = client.networks.get_organization_networks(all_organizations)
+            if networks:
+                for network in networks:
+                    devices = client.devices.get_network_devices(network['id'])
+                    for device in devices:
+                        if device['serial'] == camera_serial:
+                            return network
 
-    if all_organizations:  # make sure it's not an empty collection
-        networks = client.networks.get_organization_networks(all_organizations)
-        if networks:
-            for network in networks:
-                devices = client.devices.get_network_devices(network['id'])
-                for device in devices:
-                    if device['serial'] == camera_serial:
-                        return network
+    except Exception as err:
+        logging.exception(err, exc_info=True)
+        # Fake data if endpoint is not working
+        return {
+            "id": "L_634444597505825671"
+        }
 
-    return {}
+    return {
+        "id": None
+    }
 
 
 def get_room_meeting(room_id: str) -> Optional[dict]:
@@ -81,7 +96,8 @@ def get_room_meeting(room_id: str) -> Optional[dict]:
     Returns:
         Optional[dict]: Meeting information
     """
-    return api.get_current_meeting_api(room_id)
+    response = api.get_current_meeting_api(room_id)
+    return response.json()
 
 
 def get_available_room(meeting_length: int) -> Optional[dict]:
@@ -110,8 +126,8 @@ def get_room_t10(room_id: str) -> Optional[dict]:
     Returns:
         Optional[dict]: T10 information
     """
-    return api.get_room_device_info_api(room_id)
-
+    response = api.get_room_device_info_api(room_id)
+    return response.json()
 
 def take_picture_from_camera(network_id: str, camera_serial: str) -> dict:
     """Take picture from camera.
@@ -143,7 +159,8 @@ def identify_user(picture: str) -> Optional[dict]:
     Returns:
         Optional[dict]: User information
     """
-    return api.identify_person_api(picture)
+    data = api.identify_person_api(picture)
+    return data.json()
 
 
 async def async_send_raw_message_to_t10(ip: str, username: str, password: str, message: str) -> dict:
@@ -180,7 +197,7 @@ def send_raw_message_to_t10(ip: str, username: str, password: str, message: str)
 
 
 def send_json_message_to_t10(ip: str, username: str, password: str, message: dict) -> dict:
-    """Send message to T10.
+    """Send JSON message to T10.
 
     Args:
         message (dict): Message to send
@@ -191,6 +208,17 @@ def send_json_message_to_t10(ip: str, username: str, password: str, message: dic
     json_data = json.dumps(message)
     return loop.run_until_complete(async_send_raw_message_to_t10(ip, username, password, json_data))
 
+
+def send_json_message_to_bot(message: str):
+    """Send JSON message to bot.
+
+    Args:
+        message (str): Message
+    """
+    data = requests.get(config.BOT_URL, data={"message": message})
+    print(data)
+
+
 def schedule_o365_meeting(meeting_information: dict):
     """Schedule O365 MEETING
 
@@ -199,20 +227,20 @@ def schedule_o365_meeting(meeting_information: dict):
     """
     raise NotImplementedError()
 
+
 def handle_t10_message(message: dict):
     """Handle T10 message.
 
     Args:
         message (dict): Message
     """
-    # TODO
     print(message)
+    room_id = message["roomId"]
+    t10_data = get_room_t10(room_id)
 
     try:
         if message["choice"] == "yes":
-            send_json_message_to_t10("10.89.130.68", "cisco", "cisco", {
-                "messageId": 2
-            })
+            print("ok")
 
     except Exception as err:
         logger.debug(str(err))
@@ -231,26 +259,6 @@ def get_zone_name(camera_serial: str, zone_id: str) -> str:
     camera = next(x for x in config.MERAKI_CAMERAS if x["serial"] == camera_serial)
     zone = next(x for x in camera.get("zones", []) if x["id"] == zone_id)
     return zone["name"]
-
-def handle_meraki_data(camera_serial: str, camera_data: dict):
-    """Handle Meraki MQTT data.
-
-    Args:
-        camera_serial (str): Camera serial
-        camera_data (dict): Camera data
-    """
-    global CAMERA_STATE
-
-    objects = camera_data["objects"]
-    persons = [o for o in objects if o["type"] == "person"]
-    current_persons_count = len(persons)
-    previous_persons_count = CAMERA_STATE.get(camera_serial, 0)
-
-    if current_persons_count != previous_persons_count:
-        logger.debug(f"[DEBUG] There are now {current_persons_count} people on camera {camera_serial} (previously {previous_persons_count})")
-
-    # Update people count
-    CAMERA_STATE[camera_serial] = current_persons_count
 
 
 def handle_meraki_zone(camera_serial: str, zone_id: str, camera_data: dict):
@@ -279,34 +287,87 @@ def handle_meraki_zone(camera_serial: str, zone_id: str, camera_data: dict):
 
 
 def start_entered_scenario(camera_serial: str):
+    global ENTER_EVENT_TRIGGERED
+
+    if ENTER_EVENT_TRIGGERED:
+        return
+
+    # Set the trigger
+    ENTER_EVENT_TRIGGERED = True
     # Get the network
-    network = get_camera_network(camera_serial)
+    network_data = get_camera_network(camera_serial)
     # Get the camera capture
-    capture = take_picture_from_camera(network["id"], camera_serial)
+    capture_data = take_picture_from_camera(network_data["id"], camera_serial)
     # Identify person
-    person = identify_user(capture["url"])
+    person_data = identify_user(capture_data["url"])
     # Get the room ID associated to the camera
-    room_id = get_camera_room(camera_serial)
+    room_data = get_camera_room(camera_serial)
     # Get the T10 device associated to the room
-    t10_info = api.get_room_t10(room_id)
-    # Get the associated meeting (TODO: No hardcode)
-    meeting = {
-        "start_time": "0",
-        "attendees": ["a@local.test", "b@local.test"],
-        "subject": "Hello"
-    }
+    t10_data = get_room_t10(room_data["room"])
+    # Get the meeting
+    meeting = get_room_meeting(room_data["room"])
 
     if meeting:
         send_json_message_to_t10(
-            t10_info["credentials"]["IP"],
-            t10_info["credentials"]["username"],
-            t10_info["credentials"]["password"],
+            t10_data["credentials"]["IP"],
+            t10_data["credentials"]["username"],
+            t10_data["credentials"]["password"],
             {
                 "messageId": 1,
-                "username": person["username"]
+                "username": person_data["identified_person"]
             }
         )
 
+
+def start_too_far_scenario(camera_serial: str):
+    global WARN_EVENT_TRIGGERING, LAST_WARN_EVENT
+
+    # Check if we are not triggering
+    if WARN_EVENT_TRIGGERING:
+        return
+
+    now = time.time()
+    if now - LAST_WARN_EVENT < WARN_EVENT_THRESHOLD:
+        return
+
+    WARN_EVENT_TRIGGERING = True
+    # Get the network
+    network_data = get_camera_network(camera_serial)
+    # Get the camera capture
+    capture_data = take_picture_from_camera(network_data["id"], camera_serial)
+    # Identify person
+    person_data = identify_user(capture_data["url"])
+    # Get the room ID associated to the camera
+    room_data = get_camera_room(camera_serial)
+    # Get the T10 device associated to the room
+    t10_data = get_room_t10(room_data["room"])
+    # Get the meeting
+    meeting = get_room_meeting(room_data["room"])
+
+    username = person_data["identified_person"]
+
+    # Already triggered
+    if username in WARN_STATE:
+        username = SECOND_USERNAME
+
+    # Mark the username as warned
+    WARN_STATE[username] = True
+
+    if meeting:
+        send_json_message_to_t10(
+            t10_data["credentials"]["IP"],
+            t10_data["credentials"]["username"],
+            t10_data["credentials"]["password"],
+            {
+                "messageId": 3,
+                "username": username,
+                "first": len(list(WARN_STATE.keys())) == 1
+            }
+        )
+
+    # Warn
+    LAST_WARN_EVENT = time.time()
+    WARN_EVENT_TRIGGERING = False
 
 def handle_bot_message(message: dict):
     """Handle bot message.
@@ -346,10 +407,6 @@ def handle_message(client, userdata, message):
         userdata (Any): User data
         message (Message): Message object
     """
-    match = MQTT_RAW_DETECTIONS_RGX.search(message.topic)
-    if match:
-        handle_meraki_data(match.group("serial"), json.loads(message.payload.decode()))
-
     match = MQTT_ZONE_RGX.search(message.topic)
     if match:
         handle_meraki_zone(match.group("serial"), match.group("zone_id"), json.loads(message.payload.decode()))
@@ -377,6 +434,15 @@ def send_t10_message():
 @app.route('/test-2nd-scenario', methods=["GET"])
 def test_2nd_scenario():
     start_entered_scenario(config.MERAKI_CAMERAS[0]["serial"])
+    return "ok"
+
+
+@app.route('/test-too-far-scenario', methods=["GET"])
+def test_too_far_scenario():
+    start_too_far_scenario(config.MERAKI_CAMERAS[0]["serial"])
+    time.sleep(7)
+    start_too_far_scenario(config.MERAKI_CAMERAS[0]["serial"])
+    return "ok"
 
 
 @app.route('/on-bot-message', methods=["POST"])
