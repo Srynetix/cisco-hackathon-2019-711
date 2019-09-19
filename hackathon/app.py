@@ -13,7 +13,7 @@ import xows
 from . import api, config
 from meraki_sdk.meraki_sdk_client import MerakiSdkClient
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
@@ -234,9 +234,9 @@ def send_json_message_to_bot(message: dict):
     """Send JSON message to bot.
 
     Args:
-        message (str): Message
+        message (dict): Message
     """
-    requests.post(config.BOT_URL, json.dumps(message))
+    requests.post(config.BOT_URL, json=message)
 
 
 def schedule_o365_meeting(meeting_information: dict):
@@ -446,8 +446,22 @@ def on_t10_message():
     return "ok"
 
 
-@app.route('/send-t10-message', methods=["POST"])
-def send_t10_message():
+@app.route('/on-bot-message', methods=["POST"])
+def on_bot_message():
+    """Wait for bot incoming message.
+
+    Returns:
+        str: Route output
+    """
+    handle_bot_message(request.get_json())
+    return "ok"
+
+
+#############
+# Test routes
+
+@app.route('/test-t10-message', methods=["POST"])
+def test_t10_message():
     send_json_message_to_t10("10.89.130.68", "cisco", "cisco", request.get_json())
     return "ok"
 
@@ -461,7 +475,7 @@ def test_2nd_scenario():
 @app.route('/test-too-far-scenario', methods=["GET"])
 def test_too_far_scenario():
     start_too_far_scenario(config.MERAKI_CAMERAS[0]["serial"])
-    time.sleep(7)
+    time.sleep(WARN_EVENT_THRESHOLD)
     start_too_far_scenario(config.MERAKI_CAMERAS[0]["serial"])
     return "ok"
 
@@ -469,15 +483,4 @@ def test_too_far_scenario():
 @app.route('/test-bot-message', methods=["POST"])
 def test_bot_message():
     send_json_message_to_bot(request.get_json())
-    return "ok"
-
-
-@app.route('/on-bot-message', methods=["POST"])
-def on_bot_message():
-    """Wait for bot incoming message.
-
-    Returns:
-        str: Route output
-    """
-    handle_bot_message(request.get_json())
     return "ok"
