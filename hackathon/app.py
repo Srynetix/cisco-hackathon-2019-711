@@ -353,11 +353,11 @@ def handle_meraki_zone(camera_serial: str, zone_id: str, camera_data: dict):
     current_persons_count = camera_data["counts"]["person"]
 
     if zone_name == "Far" and current_persons_count > 0:
-        # logger.debug(f"[DEBUG] Someone is too far in the room (camera: {camera_serial})")
+        logger.debug(f"[DEBUG] Someone is too far in the room (camera: {camera_serial})")
         start_too_far_scenario(camera_serial)
 
     elif zone_name == "Start" and current_persons_count > previous_persons_count:
-        # logger.debug(f"[DEBUG] Someone entered the room (camera: {camera_serial})")
+        logger.debug(f"[DEBUG] Someone entered the room (camera: {camera_serial})")
         start_entered_scenario(camera_serial)
 
     CAMERA_STATE[state_key] = current_persons_count
@@ -426,7 +426,7 @@ def start_too_far_scenario(camera_serial: str):
         return
 
     # Check for warn count
-    if WARN_COUNT >= 2:
+    if WARN_COUNT >= 1:
         return
 
     WARN_EVENT_TRIGGERING = True
