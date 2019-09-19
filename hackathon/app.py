@@ -53,14 +53,14 @@ def get_all_devices() -> list:
 
     Returns:
         Optional[dict]: Devices list
-    """    
+    """
 
     avai_devices = []
     client = MerakiSdkClient(config.MERAKI_AUTH_TOKEN)
-    orgs = client.organizations.get_organizations()  
+    orgs = client.organizations.get_organizations()
     avai_orga =  [{'organization_id': orgs[x]} for x in orgs]
     networks = client.networks.get_organization_networks(avai_orga)
-    if networks:  
+    if networks:
         for network in networks:
             avai_devices.append( client.devices.get_network_devices(network['id']))
 
@@ -233,6 +233,7 @@ def send_json_message_to_bot(message: str):
         message (str): Message
     """
     data = requests.get(config.BOT_URL, data={"message": message})
+    import ipdb; ipdb.set_trace()
     print(data)
 
 
@@ -386,12 +387,13 @@ def start_too_far_scenario(camera_serial: str):
     LAST_WARN_EVENT = time.time()
     WARN_EVENT_TRIGGERING = False
 
-def handle_bot_message(message: dict):
+def handle_bot_message(message: str):
     """Handle bot message.
 
     Args:
         message (dict): Message
     """
+    print(message)
     pass
 
 
@@ -462,6 +464,12 @@ def test_too_far_scenario():
     return "ok"
 
 
+@app.route('/test-bot-message', methods=["GET"])
+def test_bot_message():
+    send_json_message_to_bot(request.data)
+    return "ok"
+
+
 @app.route('/on-bot-message', methods=["POST"])
 def on_bot_message():
     """Wait for bot incoming message.
@@ -469,5 +477,5 @@ def on_bot_message():
     Returns:
         str: Route output
     """
-    handle_bot_message(request.get_json())
+    handle_bot_message(request.data)
     return "ok"
