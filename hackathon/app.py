@@ -94,33 +94,32 @@ def get_camera_network(camera_serial: str) -> dict:
     Returns:
         str: Network informations
     """
-    client = MerakiSdkClient(config.MERAKI_AUTH_TOKEN)
-    try:
-        orgs = client.organizations.get_organizations()
-        all_organizations = {}
+    # client = MerakiSdkClient(config.MERAKI_AUTH_TOKEN)
+    # try:
+    #     orgs = client.organizations.get_organizations()
+    #     all_organizations = {}
 
-        for org in orgs:
-            all_organizations['organization_id'] = org['id']
+    #     for org in orgs:
+    #         all_organizations['organization_id'] = org['id']
 
-        if all_organizations:  # make sure it's not an empty collection
-            networks = client.networks.get_organization_networks(all_organizations)
-            if networks:
-                for network in networks:
-                    devices = client.devices.get_network_devices(network['id'])
-                    for device in devices:
-                        if device['serial'] == camera_serial:
-                            return network
+    #     if all_organizations:  # make sure it's not an empty collection
+    #         networks = client.networks.get_organization_networks(all_organizations)
+    #         if networks:
+    #             for network in networks:
+    #                 devices = client.devices.get_network_devices(network['id'])
+    #                 for device in devices:
+    #                     if device['serial'] == camera_serial:
+    #                         return network
 
-    except Exception as err:
-        logging.exception(err, exc_info=True)
-        # Fake data if endpoint is not working
-        return {
-            "id": "L_634444597505825671"
-        }
-
+    # except Exception as err:
+    #     logging.exception(err, exc_info=True)
     return {
-        "id": None
+        "id": "L_634444597505825671"
     }
+
+    # return {
+    #     "id": None
+    # }
 
 
 def get_room_meeting(room_id: str) -> Optional[dict]:
@@ -340,13 +339,15 @@ def handle_meraki_zone(camera_serial: str, zone_id: str, camera_data: dict):
     previous_persons_count = CAMERA_STATE.get(state_key, 0)
     current_persons_count = camera_data["counts"]["person"]
 
-    if zone_name == "Start" and current_persons_count > previous_persons_count:
-        logger.debug(f"[DEBUG] Someone entered the room (camera: {camera_serial})")
-        # start_entered_scenario(camera_serial)
+    print(zone_name, current_persons_count)
 
-    if zone_name == "Far" and current_persons_count > previous_persons_count:
+    if zone_name == "Far" and current_persons_count > 0:
         logger.debug(f"[DEBUG] Someone is too far in the room (camera: {camera_serial})")
-        # start_too_far_scenario(camera_serial)
+        start_too_far_scenario(camera_serial)
+
+    elif zone_name == "Start" and current_persons_count > previous_persons_count:
+        logger.debug(f"[DEBUG] Someone entered the room (camera: {camera_serial})")
+        start_entered_scenario(camera_serial)
 
     CAMERA_STATE[state_key] = current_persons_count
 
@@ -397,7 +398,6 @@ def start_too_far_scenario(camera_serial: str):
     WARN_EVENT_TRIGGERING = True
 
     related_meeting_data = get_person_meeting_from_camera(camera_serial)
-
     username = related_meeting_data['username']
 
     # Already triggered
@@ -415,7 +415,7 @@ def start_too_far_scenario(camera_serial: str):
             {
                 "messageId": 3,
                 "username": username,
-                "first": len(WARN_STATE.keys) == 1
+                "first": len(WARN_STATE) == 1
             }
         )
 
