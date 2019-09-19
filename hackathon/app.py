@@ -232,10 +232,7 @@ def send_json_message_to_bot(message: str):
     Args:
         message (str): Message
     """
-    data = requests.get(config.BOT_URL, data={"message": message})
-    import ipdb; ipdb.set_trace()
-    print(data)
-
+    requests.get(config.BOT_URL, data={"message": message})
 
 def schedule_o365_meeting(meeting_information: dict):
     """Schedule O365 MEETING
