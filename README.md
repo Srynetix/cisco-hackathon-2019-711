@@ -30,6 +30,9 @@ MERAKI_CAMERAS = [
         ]
     }
 ]
+BOT_URL = "http://your.bot.url"
+DATA_API_BASE_URL = "http://data.api.url"
+MERAKI_AUTH_TOKEN = "yourauthtoken"
 ```
 
 Then you can start the procedure:
