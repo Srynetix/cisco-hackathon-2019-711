@@ -140,9 +140,11 @@ def get_room_meeting(room_id: str) -> Optional[dict]:
     Returns:
         Optional[dict]: Meeting information
     """
-    response = api.get_current_meeting_api(room_id)
-    return response.json()
-
+    try:
+        response = api.get_current_meeting_api(room_id)
+        return response.json()
+    except Exception as err:
+        logger.error(str(err))
 
 def get_available_room(meeting_length: int) -> Optional[dict]:
     """Get meeting associated to room.
