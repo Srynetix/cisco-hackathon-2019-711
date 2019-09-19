@@ -14,7 +14,7 @@ from . import api, config
 from meraki_sdk.meraki_sdk_client import MerakiSdkClient
 
 # Logging configuration
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Flask app generation
@@ -124,7 +124,7 @@ def get_camera_network(camera_serial: str) -> dict:
                             return network
 
     except Exception as err:
-        logging.exception(err, exc_info=True)
+        logging.error(str(err))
 
     return {
         "id": "L_634444597505825671"
@@ -156,7 +156,7 @@ def get_available_room(meeting_length: int) -> Optional[dict]:
     try:
         return api.get_available_room_api(meeting_length)
     except Exception as err:
-        logger.log(str(err))
+        logger.error(str(err))
 
 
 
