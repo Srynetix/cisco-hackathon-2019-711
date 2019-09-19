@@ -48,6 +48,23 @@ def get_camera_room(camera_serial: str) -> Optional[dict]:
     response = api.get_camera_room_api(camera_serial)
     return response.json()
 
+def get_all_devices() -> list:
+    """Get all devices.
+
+    Returns:
+        Optional[dict]: Devices list
+    """    
+
+    avai_devices = []
+    client = MerakiSdkClient(config.MERAKI_AUTH_TOKEN)
+    orgs = client.organizations.get_organizations()  
+    avai_orga =  [{'organization_id': orgs[x]} for x in orgs]
+    networks = client.networks.get_organization_networks(avai_orga)
+    if networks:  
+        for network in networks:
+            avai_devices.append( client.devices.get_network_devices(network['id']))
+
+    return avai_devices
 
 def get_camera_network(camera_serial: str) -> dict:
     """Get network associated to camera.
