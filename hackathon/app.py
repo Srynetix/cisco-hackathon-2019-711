@@ -52,6 +52,8 @@ WARN_EVENT_THRESHOLD = 7
 WARN_COUNT = 0
 # Recording event enabled
 RECORDING_EVENT_ENABLED = False
+# Recording event trigerred
+RECORDING_EVENT_TRIGGERED = False
 # Second username (for demo purposes)
 SECOND_USERNAME = "John Doe"
 
@@ -314,6 +316,9 @@ def handle_t10_message(message: dict):
             "attendants": meeting["attendants"]
         })
 
+    elif message_id == 4 and choice == "yes":
+        pass
+
 
 def get_zone_name(camera_serial: str, zone_id: str) -> str:
     """Get zone name.
@@ -362,29 +367,47 @@ def start_entered_scenario(camera_serial: str):
     Args:
         camera_serial (str): Camera serial
     """
-    global ENTER_EVENT_TRIGGERED, LAST_WARN_EVENT
+    global ENTER_EVENT_TRIGGERED, RECORDING_EVENT_TRIGGERED
 
-    if ENTER_EVENT_TRIGGERED or not ENTER_EVENT_ENABLED:
-        return
+    if ENTER_EVENT_ENABLED:
+        if ENTER_EVENT_TRIGGERED:
+            return
 
-    # Set the trigger
-    ENTER_EVENT_TRIGGERED = True
+        # Set the trigger
+        ENTER_EVENT_TRIGGERED = True
 
-    related_meeting_data = get_person_meeting_from_camera(camera_serial)
+        related_meeting_data = get_person_meeting_from_camera(camera_serial)
 
-    if related_meeting_data:
-        send_json_message_to_t10(
-            related_meeting_data['t10_data']["credentials"]["IP"],
-            related_meeting_data['t10_data']["credentials"]["username"],
-            related_meeting_data['t10_data']["credentials"]["password"],
-            {
-                "messageId": 1,
-                'username': related_meeting_data['username']
-            }
-        )
+        if related_meeting_data:
+            send_json_message_to_t10(
+                related_meeting_data['t10_data']["credentials"]["IP"],
+                related_meeting_data['t10_data']["credentials"]["username"],
+                related_meeting_data['t10_data']["credentials"]["password"],
+                {
+                    "messageId": 1,
+                    'username': related_meeting_data['username']
+                }
+            )
 
-    # Block the warn event
-    LAST_WARN_EVENT = time.time()
+    if RECORDING_EVENT_ENABLED:
+        if RECORDING_EVENT_TRIGGERED:
+            return
+
+        # Set the trigger
+        RECORDING_EVENT_TRIGGERED = True
+
+        related_meeting_data = get_person_meeting_from_camera(camera_serial)
+
+        if related_meeting_data:
+            send_json_message_to_t10(
+                related_meeting_data['t10_data']["credentials"]["IP"],
+                related_meeting_data['t10_data']["credentials"]["username"],
+                related_meeting_data['t10_data']["credentials"]["password"],
+                {
+                    "messageId": 4,
+                    'username': related_meeting_data['username']
+                }
+            )
 
 
 def start_too_far_scenario(camera_serial: str):
@@ -467,7 +490,7 @@ def handle_bot_message(message: dict):
 # MQTT routes
 
 @mqtt.on_connect()
-def handle_connect(client, userdata, flags, rc):
+def handle_mqtt_connect(client, userdata, flags, rc):
     """Handle MQTT connections.
 
     Args:
@@ -484,7 +507,7 @@ def handle_connect(client, userdata, flags, rc):
             mqtt.subscribe(f'/merakimv/{serial}/{zone_id}')
 
 @mqtt.on_message()
-def handle_message(client, userdata, message):
+def handle_mqtt_message(client, userdata, message):
     """Handle a MQTT incoming message.
 
     Args:
@@ -543,6 +566,19 @@ def enable_warn_events():
     """
     global WARN_EVENT_ENABLED
     WARN_EVENT_ENABLED = True
+
+    return "ok"
+
+
+@app.route('/enable-recording-events', methods=["POST"])
+def enable_recording_events():
+    """Enable recording events.
+
+    Returns:
+        str: Route output
+    """
+    global RECORDING_EVENT_ENABLED
+    RECORDING_EVENT_ENABLED = True
 
     return "ok"
 
