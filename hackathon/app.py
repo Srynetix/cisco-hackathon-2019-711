@@ -13,24 +13,36 @@ import xows
 from . import api, config
 from meraki_sdk.meraki_sdk_client import MerakiSdkClient
 
+# Logging configuration
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Flask app generation
 app = Flask(__name__)
+
+# MQTT client configuration
 app.config["MQTT_BROKER_URL"] = config.MQTT_BROKER_URL
 app.config["MQTT_BROKER_PORT"] = config.MQTT_BROKER_PORT
 mqtt = Mqtt(app)
 
+# Creating asyncio loop
 loop = asyncio.get_event_loop()
 
+# Regex to extract the camera serial and zone ID
 MQTT_ZONE_RGX = re.compile(r"/merakimv/(?P<serial>[0-9A-Z-]+)/(?P<zone_id>[0-9A-Z]+)")
+# Current camera state: serial as a key and people count as value
 CAMERA_STATE = {}
-WARN_STATE = {}
+# Current warn state: username set
+WARN_STATE = set({})
+# Has the enter event been triggered (only one for the demo)
 ENTER_EVENT_TRIGGERED = False
+# When was the last warn event
 LAST_WARN_EVENT = 0
+# Is the event currently triggering
 WARN_EVENT_TRIGGERING = False
+# Wait threshold for the warn event
 WARN_EVENT_THRESHOLD = 7
-
+# Second username (for demo purposes)
 SECOND_USERNAME = "John Doe"
 
 ###########
@@ -47,6 +59,7 @@ def get_camera_room(camera_serial: str) -> Optional[dict]:
     """
     response = api.get_camera_room_api(camera_serial)
     return response.json()
+
 
 def get_all_devices(organization_id=None, network_id=None) -> list:
     """Get all devices.
@@ -70,6 +83,7 @@ def get_all_devices(organization_id=None, network_id=None) -> list:
                 avai_devices.append( client.devices.get_network_devices(network['id']))
 
     return avai_devices
+
 
 def get_camera_network(camera_serial: str) -> dict:
     """Get network associated to camera.
@@ -150,6 +164,7 @@ def get_room_t10(room_id: str) -> Optional[dict]:
     response = api.get_room_device_info_api(room_id)
     return response.json()
 
+
 def take_picture_from_camera(network_id: str, camera_serial: str) -> dict:
     """Take picture from camera.
 
@@ -216,7 +231,16 @@ def send_raw_message_to_t10(ip: str, username: str, password: str, message: str)
     """
     return loop.run_until_complete(async_send_raw_message_to_t10(ip, username, password, message))
 
-def get_person_meeting_from_camera(camera_serial):
+
+def get_person_meeting_from_camera(camera_serial: str) -> Optional[dict]:
+    """Get person and meeting from camera serial.
+
+    Args:
+        camera_serial (str): Camera serial
+
+    Returns:
+        Optional[dict]: Data
+    """
     # Get the network
     network_data = get_camera_network(camera_serial)
     # Get the camera capture
@@ -235,6 +259,7 @@ def get_person_meeting_from_camera(camera_serial):
             't10_data': t10_data,
             'username': person_data["identified_person"]
         }
+
 
 def send_json_message_to_t10(ip: str, username: str, password: str, message: dict) -> dict:
     """Send JSON message to T10.
@@ -327,6 +352,11 @@ def handle_meraki_zone(camera_serial: str, zone_id: str, camera_data: dict):
 
 
 def start_entered_scenario(camera_serial: str):
+    """Start the room enter scenario.
+
+    Args:
+        camera_serial (str): Camera serial
+    """
     global ENTER_EVENT_TRIGGERED
 
     if ENTER_EVENT_TRIGGERED:
@@ -349,6 +379,11 @@ def start_entered_scenario(camera_serial: str):
 
 
 def start_too_far_scenario(camera_serial: str):
+    """Start the "too far" scenario.
+
+    Args:
+        camera_serial (str): Camera serial
+    """
     global WARN_EVENT_TRIGGERING, LAST_WARN_EVENT
 
     # Check if we are not triggering
@@ -370,7 +405,7 @@ def start_too_far_scenario(camera_serial: str):
         username = SECOND_USERNAME
 
     # Mark the username as warned
-    WARN_STATE[username] = True
+    WARN_STATE.add(username)
 
     if related_meeting_data:
         send_json_message_to_t10(
@@ -380,7 +415,7 @@ def start_too_far_scenario(camera_serial: str):
             {
                 "messageId": 3,
                 "username": username,
-                "first": len(list(WARN_STATE.keys())) == 1
+                "first": len(WARN_STATE.keys) == 1
             }
         )
 
@@ -475,18 +510,33 @@ def on_bot_message():
 
 @app.route('/test-t10-message', methods=["POST"])
 def test_t10_message():
+    """Test message send to the T10 using a hardcoded device.
+
+    Returns:
+        str: Route output
+    """
     send_json_message_to_t10("10.89.130.68", "cisco", "cisco", request.get_json())
     return "ok"
 
 
 @app.route('/test-2nd-scenario', methods=["GET"])
 def test_2nd_scenario():
+    """Test the room enter scenario.
+
+    Returns:
+        str: Route output
+    """
     start_entered_scenario(config.MERAKI_CAMERAS[0]["serial"])
     return "ok"
 
 
 @app.route('/test-too-far-scenario', methods=["GET"])
 def test_too_far_scenario():
+    """Test the "too far" scenario.
+
+    Returns:
+        str: Route output
+    """
     start_too_far_scenario(config.MERAKI_CAMERAS[0]["serial"])
     time.sleep(WARN_EVENT_THRESHOLD)
     start_too_far_scenario(config.MERAKI_CAMERAS[0]["serial"])
@@ -495,5 +545,10 @@ def test_too_far_scenario():
 
 @app.route('/test-bot-message', methods=["POST"])
 def test_bot_message():
+    """Test the bot message.
+
+    Returns:
+        str: Route output
+    """
     send_json_message_to_bot(request.get_json())
     return "ok"
