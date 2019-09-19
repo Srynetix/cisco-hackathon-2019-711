@@ -14,7 +14,7 @@ from . import api, config
 from meraki_sdk.meraki_sdk_client import MerakiSdkClient
 
 # Logging configuration
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Flask app generation
@@ -42,6 +42,8 @@ LAST_WARN_EVENT = 0
 WARN_EVENT_TRIGGERING = False
 # Wait threshold for the warn event
 WARN_EVENT_THRESHOLD = 7
+# Warn count
+WARN_COUNT = 0
 # Second username (for demo purposes)
 SECOND_USERNAME = "John Doe"
 
@@ -298,16 +300,6 @@ def handle_t10_message(message: dict):
         message (dict): Message
     """
     print(message)
-    room_id = message["roomId"]
-    t10_data = get_room_t10(room_id)
-
-    try:
-        if message["choice"] == "yes":
-            print("ok")
-
-    except Exception as err:
-        logger.debug(str(err))
-
 
 def get_zone_name(camera_serial: str, zone_id: str) -> str:
     """Get zone name.
@@ -339,15 +331,13 @@ def handle_meraki_zone(camera_serial: str, zone_id: str, camera_data: dict):
     previous_persons_count = CAMERA_STATE.get(state_key, 0)
     current_persons_count = camera_data["counts"]["person"]
 
-    print(zone_name, current_persons_count)
-
     if zone_name == "Far" and current_persons_count > 0:
         logger.debug(f"[DEBUG] Someone is too far in the room (camera: {camera_serial})")
         start_too_far_scenario(camera_serial)
 
     elif zone_name == "Start" and current_persons_count > previous_persons_count:
         logger.debug(f"[DEBUG] Someone entered the room (camera: {camera_serial})")
-        start_entered_scenario(camera_serial)
+        # start_entered_scenario(camera_serial)
 
     CAMERA_STATE[state_key] = current_persons_count
 
@@ -385,14 +375,19 @@ def start_too_far_scenario(camera_serial: str):
     Args:
         camera_serial (str): Camera serial
     """
-    global WARN_EVENT_TRIGGERING, LAST_WARN_EVENT
+    global WARN_EVENT_TRIGGERING, LAST_WARN_EVENT, WARN_COUNT
 
     # Check if we are not triggering
     if WARN_EVENT_TRIGGERING:
         return
 
+    # Check for elapsed time
     now = time.time()
     if now - LAST_WARN_EVENT < WARN_EVENT_THRESHOLD:
+        return
+
+    # Check for warn count
+    if WARN_COUNT >= 2:
         return
 
     WARN_EVENT_TRIGGERING = True
@@ -403,6 +398,8 @@ def start_too_far_scenario(camera_serial: str):
     # Already triggered
     if username in WARN_STATE:
         username = SECOND_USERNAME
+
+    WARN_COUNT += 1
 
     # Mark the username as warned
     WARN_STATE.add(username)
