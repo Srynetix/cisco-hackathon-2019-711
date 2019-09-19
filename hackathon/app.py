@@ -34,16 +34,24 @@ MQTT_ZONE_RGX = re.compile(r"/merakimv/(?P<serial>[0-9A-Z-]+)/(?P<zone_id>[0-9A-
 CAMERA_STATE = {}
 # Current warn state: username set
 WARN_STATE = set({})
+# Enter event enabled
+ENTER_EVENT_ENABLED = False
 # Has the enter event been triggered (only one for the demo)
 ENTER_EVENT_TRIGGERED = False
 # When was the last warn event
 LAST_WARN_EVENT = 0
+# Meeting is started
+MEETING_STARTED = False
+# Warn event enabled
+WARN_EVENT_ENABLED = False
 # Is the event currently triggering
 WARN_EVENT_TRIGGERING = False
 # Wait threshold for the warn event
 WARN_EVENT_THRESHOLD = 7
 # Warn count
 WARN_COUNT = 0
+# Recording event enabled
+RECORDING_EVENT_ENABLED = False
 # Second username (for demo purposes)
 SECOND_USERNAME = "John Doe"
 
@@ -281,21 +289,14 @@ def send_json_message_to_bot(message: dict):
     requests.post(config.BOT_URL, json=message)
 
 
-def schedule_o365_meeting(meeting_information: dict):
-    """Schedule O365 MEETING
-
-    Args:
-        message (dict): meeting_information
-    """
-    raise NotImplementedError()
-
-
 def handle_t10_message(message: dict):
     """Handle T10 message.
 
     Args:
         message (dict): Message
     """
+    global MEETING_STARTED, LAST_WARN_EVENT
+
     message_id = message.get("messageId")
     room_id = message.get("roomId")
     choice = message.get("choice")
@@ -303,6 +304,10 @@ def handle_t10_message(message: dict):
     if message_id == 1 and choice == "yes":
         # Get meeting info
         meeting = get_room_meeting(room_id)
+
+        if not MEETING_STARTED:
+            LAST_WARN_EVENT = time.time()
+            MEETING_STARTED = True
 
         send_json_message_to_bot({
             "roomId": room_id,
@@ -357,10 +362,11 @@ def start_entered_scenario(camera_serial: str):
     Args:
         camera_serial (str): Camera serial
     """
-    global ENTER_EVENT_TRIGGERED
+    global ENTER_EVENT_TRIGGERED, LAST_WARN_EVENT
 
-    if ENTER_EVENT_TRIGGERED:
+    if ENTER_EVENT_TRIGGERED or not ENTER_EVENT_ENABLED:
         return
+
     # Set the trigger
     ENTER_EVENT_TRIGGERED = True
 
@@ -377,6 +383,9 @@ def start_entered_scenario(camera_serial: str):
             }
         )
 
+    # Block the warn event
+    LAST_WARN_EVENT = time.time()
+
 
 def start_too_far_scenario(camera_serial: str):
     """Start the "too far" scenario.
@@ -387,7 +396,7 @@ def start_too_far_scenario(camera_serial: str):
     global WARN_EVENT_TRIGGERING, LAST_WARN_EVENT, WARN_COUNT
 
     # Check if we are not triggering
-    if WARN_EVENT_TRIGGERING:
+    if WARN_EVENT_TRIGGERING or not WARN_EVENT_ENABLED or not MEETING_STARTED:
         return
 
     # Check for elapsed time
@@ -438,6 +447,7 @@ def handle_bot_message(message: dict):
     """
     message_id = message.get("messageId", 0)
     room_id = message.get("roomId", None)
+
     if message_id == 2:
         # Send a late choice to the T10
         t10_data = get_room_t10(room_id)
@@ -508,6 +518,32 @@ def on_bot_message():
         str: Route output
     """
     handle_bot_message(request.get_json())
+    return "ok"
+
+
+@app.route('/enable-enter-events', methods=["POST"])
+def enable_enter_events():
+    """Enable enter events.
+
+    Returns:
+        str: Route output
+    """
+    global ENTER_EVENT_ENABLED
+    ENTER_EVENT_ENABLED = True
+
+    return "ok"
+
+
+@app.route('/enable-warn-events', methods=["POST"])
+def enable_warn_events():
+    """Enable warn events.
+
+    Returns:
+        str: Route output
+    """
+    global WARN_EVENT_ENABLED
+    WARN_EVENT_ENABLED = True
+
     return "ok"
 
 
