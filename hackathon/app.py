@@ -554,6 +554,8 @@ def enable_enter_events():
     global ENTER_EVENT_ENABLED
     ENTER_EVENT_ENABLED = True
 
+    print("ENTER EVENT ENABLED")
+
     return "ok"
 
 
@@ -567,6 +569,8 @@ def enable_warn_events():
     global WARN_EVENT_ENABLED
     WARN_EVENT_ENABLED = True
 
+    print("WARN EVENT ENABLED")
+
     return "ok"
 
 
@@ -579,6 +583,8 @@ def enable_recording_events():
     """
     global RECORDING_EVENT_ENABLED
     RECORDING_EVENT_ENABLED = True
+
+    print("RECORDING EVENT ENABLED")
 
     return "ok"
 
