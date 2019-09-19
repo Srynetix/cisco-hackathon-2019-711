@@ -370,44 +370,40 @@ def start_entered_scenario(camera_serial: str):
     global ENTER_EVENT_TRIGGERED, RECORDING_EVENT_TRIGGERED
 
     if ENTER_EVENT_ENABLED:
-        if ENTER_EVENT_TRIGGERED:
-            return
+        if not ENTER_EVENT_TRIGGERED:
+            # Set the trigger
+            ENTER_EVENT_TRIGGERED = True
 
-        # Set the trigger
-        ENTER_EVENT_TRIGGERED = True
+            related_meeting_data = get_person_meeting_from_camera(camera_serial)
 
-        related_meeting_data = get_person_meeting_from_camera(camera_serial)
-
-        if related_meeting_data:
-            send_json_message_to_t10(
-                related_meeting_data['t10_data']["credentials"]["IP"],
-                related_meeting_data['t10_data']["credentials"]["username"],
-                related_meeting_data['t10_data']["credentials"]["password"],
-                {
-                    "messageId": 1,
-                    'username': related_meeting_data['username']
-                }
-            )
+            if related_meeting_data:
+                send_json_message_to_t10(
+                    related_meeting_data['t10_data']["credentials"]["IP"],
+                    related_meeting_data['t10_data']["credentials"]["username"],
+                    related_meeting_data['t10_data']["credentials"]["password"],
+                    {
+                        "messageId": 1,
+                        'username': related_meeting_data['username']
+                    }
+                )
 
     if RECORDING_EVENT_ENABLED:
-        if RECORDING_EVENT_TRIGGERED:
-            return
+        if not RECORDING_EVENT_TRIGGERED:
+            # Set the trigger
+            RECORDING_EVENT_TRIGGERED = True
 
-        # Set the trigger
-        RECORDING_EVENT_TRIGGERED = True
+            related_meeting_data = get_person_meeting_from_camera(camera_serial)
 
-        related_meeting_data = get_person_meeting_from_camera(camera_serial)
-
-        if related_meeting_data:
-            send_json_message_to_t10(
-                related_meeting_data['t10_data']["credentials"]["IP"],
-                related_meeting_data['t10_data']["credentials"]["username"],
-                related_meeting_data['t10_data']["credentials"]["password"],
-                {
-                    "messageId": 4,
-                    'username': related_meeting_data['username']
-                }
-            )
+            if related_meeting_data:
+                send_json_message_to_t10(
+                    related_meeting_data['t10_data']["credentials"]["IP"],
+                    related_meeting_data['t10_data']["credentials"]["username"],
+                    related_meeting_data['t10_data']["credentials"]["password"],
+                    {
+                        "messageId": 4,
+                        'username': related_meeting_data['username']
+                    }
+                )
 
 
 def start_too_far_scenario(camera_serial: str):
