@@ -234,7 +234,7 @@ def get_person_meeting_from_camera(camera_serial):
         return {
             't10_data': t10_data,
             'username': person_data["identified_person"]
-        }    
+        }
 
 def send_json_message_to_t10(ip: str, username: str, password: str, message: dict) -> dict:
     """Send JSON message to T10.
@@ -332,7 +332,7 @@ def start_entered_scenario(camera_serial: str):
         return
     # Set the trigger
     ENTER_EVENT_TRIGGERED = True
-    
+
     related_meeting_data = get_person_meeting_from_camera(camera_serial)
 
     if related_meeting_data:
