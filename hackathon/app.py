@@ -96,32 +96,29 @@ def get_camera_network(camera_serial: str) -> dict:
     Returns:
         str: Network informations
     """
-    # client = MerakiSdkClient(config.MERAKI_AUTH_TOKEN)
-    # try:
-    #     orgs = client.organizations.get_organizations()
-    #     all_organizations = {}
+    client = MerakiSdkClient(config.MERAKI_AUTH_TOKEN)
+    try:
+        orgs = client.organizations.get_organizations()
+        all_organizations = {}
 
-    #     for org in orgs:
-    #         all_organizations['organization_id'] = org['id']
+        for org in orgs:
+            all_organizations['organization_id'] = org['id']
 
-    #     if all_organizations:  # make sure it's not an empty collection
-    #         networks = client.networks.get_organization_networks(all_organizations)
-    #         if networks:
-    #             for network in networks:
-    #                 devices = client.devices.get_network_devices(network['id'])
-    #                 for device in devices:
-    #                     if device['serial'] == camera_serial:
-    #                         return network
+        if all_organizations:  # make sure it's not an empty collection
+            networks = client.networks.get_organization_networks(all_organizations)
+            if networks:
+                for network in networks:
+                    devices = client.devices.get_network_devices(network['id'])
+                    for device in devices:
+                        if device['serial'] == camera_serial:
+                            return network
 
-    # except Exception as err:
-    #     logging.exception(err, exc_info=True)
+    except Exception as err:
+        logging.exception(err, exc_info=True)
+
     return {
         "id": "L_634444597505825671"
     }
-
-    # return {
-    #     "id": None
-    # }
 
 
 def get_room_meeting(room_id: str) -> Optional[dict]:
@@ -299,7 +296,19 @@ def handle_t10_message(message: dict):
     Args:
         message (dict): Message
     """
-    print(message)
+    message_id = message.get("messageId")
+    room_id = message.get("roomId")
+    choice = message.get("choice")
+
+    if message_id == 1 and choice == "yes":
+        # Get meeting info
+        meeting = get_room_meeting(room_id)
+
+        send_json_message_to_bot({
+            "roomId": room_id,
+            "attendants": meeting["attendants"]
+        })
+
 
 def get_zone_name(camera_serial: str, zone_id: str) -> str:
     """Get zone name.
@@ -337,7 +346,7 @@ def handle_meraki_zone(camera_serial: str, zone_id: str, camera_data: dict):
 
     elif zone_name == "Start" and current_persons_count > previous_persons_count:
         logger.debug(f"[DEBUG] Someone entered the room (camera: {camera_serial})")
-        # start_entered_scenario(camera_serial)
+        start_entered_scenario(camera_serial)
 
     CAMERA_STATE[state_key] = current_persons_count
 
